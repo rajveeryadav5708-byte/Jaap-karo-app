@@ -1,0 +1,51 @@
+name: Build Jaap Karo APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          unzip -o jaap-karo-android-ready.zip -d extracted
+          cd extracted/jaap-karo-aab
+          echo "PROJECT_DIR=$PWD" >> "$GITHUB_ENV"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install and build
+        run: |
+          cd "$PROJECT_DIR"
+          npm install
+          npm run build
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR/android"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jaap-Karo-APK
+          path: extracted/jaap-karo-aab/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
